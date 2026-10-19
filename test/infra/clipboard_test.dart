@@ -22,6 +22,7 @@ class MockClipboard {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late MockClipboard mockClipboard;
 
   setUp(() {
@@ -30,7 +31,7 @@ void main() {
         .setMockMethodCallHandler(SystemChannels.platform, (message) async {
       switch (message.method) {
         case "Clipboard.getData":
-          return mockClipboard.getData;
+          return mockClipboard.text == null ? null : mockClipboard.getData;
 
         case "Clipboard.setData":
           final args = message.arguments as Map<String, dynamic>;
@@ -44,6 +45,54 @@ void main() {
   });
 
   group('Clipboard tests', () {
+    test('native image bytes and source are passed through the clipboard', () {
+      final bytes = Uint8List.fromList([1, 2, 3]);
+      final image = AppFlowyClipboardImage.fromMap({
+        'bytes': bytes,
+        'source': 'https://example.com/image.png',
+      });
+      final data = AppFlowyClipboard.fromSystemData(images: [image]);
+      expect(data.images.single.bytes, bytes);
+      expect(data.images.single.source, 'https://example.com/image.png');
+      expect(data.nodes, isNull);
+    });
+    test('native paste uses authorized HTML without reading clipboard again',
+        () async {
+      await AppFlowyClipboard.setData(text: 'Plain text');
+      var readCount = 0;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.getData') readCount++;
+        return null;
+      });
+      final data = AppFlowyClipboard.fromSystemData(
+        text: 'External',
+        html: '<p><b>External</b></p>',
+      );
+      expect(data.html, '<p><b>External</b></p>');
+      expect(readCount, 0);
+    });
+
+    test('native data retains editor HTML only while clipboard text matches',
+        () async {
+      await AppFlowyClipboard.setData(
+        text: 'Bold',
+        html: '<p><strong>Bold</strong></p>',
+      );
+      expect(
+        AppFlowyClipboard.fromSystemData(text: 'Bold').html,
+        '<p><strong>Bold</strong></p>',
+      );
+      expect(AppFlowyClipboard.fromSystemData().html, isNull);
+    });
+
+    test('retains rich text until the system clipboard changes', () async {
+      const html = '<p><strong>Bold</strong></p>';
+      await AppFlowyClipboard.setData(text: 'Bold', html: html);
+      expect((await AppFlowyClipboard.getData()).html, html);
+      await Clipboard.setData(const ClipboardData(text: 'External'));
+      expect((await AppFlowyClipboard.getData()).html, isNull);
+    });
     test('AppFlowyClipboardData constructor', () {
       const data = AppFlowyClipboardData();
 

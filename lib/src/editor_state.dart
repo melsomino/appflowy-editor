@@ -144,6 +144,11 @@ class EditorState {
 
   final Document document;
 
+  /// A host can import external assets into its own storage before insertion.
+  /// Return true after handling the complete paste; false uses built-in paste.
+  Future<bool> Function(AppFlowyClipboardData data, Selection selection)?
+      onPaste;
+
   // the minimum duration for saving the history item.
   final Duration minHistoryItemDuration;
 
@@ -164,6 +169,9 @@ class EditorState {
 
   /// The edge offset of the auto scroll.
   double autoScrollEdgeOffset = appFlowyEditorAutoScrollEdgeOffset;
+
+  /// Live viewport areas obscured by floating controls during auto scroll.
+  ValueGetter<EdgeInsets>? autoScrollInsets;
 
   /// The style of the editor.
   late EditorStyle editorStyle;
@@ -673,6 +681,7 @@ class EditorState {
       late AutoScroller scroller;
       scroller = AutoScroller(
         scrollableState,
+        viewportInsets: autoScrollInsets,
         velocityScalar: 0.15,
         minimumAutoScrollDelta: 0.07,
         maxAutoScrollDelta: 3.5,
@@ -697,6 +706,7 @@ class EditorState {
       autoScroller = scroller;
       this.scrollableState = scrollableState;
     }
+    autoScroller?.viewportInsets = autoScrollInsets;
   }
 
   void _recordRedoOrUndo(

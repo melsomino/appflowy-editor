@@ -19,6 +19,7 @@ class MobileSelectionGestureDetector extends StatefulWidget {
     this.onLongPressStart,
     this.onLongPressEnd,
     this.onLongPressMoveUpdate,
+    this.deferSingleTap,
   });
 
   @override
@@ -37,6 +38,10 @@ class MobileSelectionGestureDetector extends StatefulWidget {
   final GestureLongPressStartCallback? onLongPressStart;
   final GestureLongPressEndCallback? onLongPressEnd;
   final GestureLongPressMoveUpdateCallback? onLongPressMoveUpdate;
+
+  /// Defer the single-tap callback until a second tap has been ruled out.
+  /// Editors can enable this in viewing mode to avoid opening the IME first.
+  final bool Function()? deferSingleTap;
 }
 
 class MobileSelectionGestureDetectorState
@@ -45,56 +50,63 @@ class MobileSelectionGestureDetectorState
   Timer? _doubleTapTimer;
   int _tripleTapCount = 0;
   Timer? _tripleTapTimer;
+  TapUpDetails? _pendingSingleTap;
 
   final kTripleTapTimeout = const Duration(milliseconds: 500);
 
   @override
   Widget build(BuildContext context) {
-    return RawGestureDetector(
-      behavior: HitTestBehavior.opaque,
-      gestures: {
-        PanGestureRecognizer:
-            GestureRecognizerFactoryWithHandlers<PanGestureRecognizer>(
-          () => PanGestureRecognizer(
-            supportedDevices: {
-              //   // https://docs.flutter.dev/release/breaking-changes/trackpad-gestures#for-gesture-interactions-not-suitable-for-trackpad-usage
-              //   PointerDeviceKind.trackpad,
-              PointerDeviceKind.touch,
-              PointerDeviceKind.mouse,
-              PointerDeviceKind.stylus,
-              PointerDeviceKind.invertedStylus,
+    return Listener(
+      // A new pointer may become a double tap, long press or scroll. In every
+      // case, it supersedes the previous pending single-tap action.
+      onPointerDown: (_) => _pendingSingleTap = null,
+      onPointerCancel: (_) => _pendingSingleTap = null,
+      child: RawGestureDetector(
+        behavior: HitTestBehavior.opaque,
+        gestures: {
+          PanGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<PanGestureRecognizer>(
+            () => PanGestureRecognizer(
+              supportedDevices: {
+                //   // https://docs.flutter.dev/release/breaking-changes/trackpad-gestures#for-gesture-interactions-not-suitable-for-trackpad-usage
+                //   PointerDeviceKind.trackpad,
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse,
+                PointerDeviceKind.stylus,
+                PointerDeviceKind.invertedStylus,
+              },
+            ),
+            (recognizer) {
+              recognizer
+                ..dragStartBehavior = DragStartBehavior.down
+                ..onStart = widget.onPanStart
+                ..onUpdate = widget.onPanUpdate
+                ..onEnd = widget.onPanEnd;
             },
           ),
-          (recognizer) {
-            recognizer
-              ..dragStartBehavior = DragStartBehavior.down
-              ..onStart = widget.onPanStart
-              ..onUpdate = widget.onPanUpdate
-              ..onEnd = widget.onPanEnd;
-          },
-        ),
-        LongPressGestureRecognizer:
-            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
-          () => LongPressGestureRecognizer(),
-          (recognizer) {
-            recognizer
-              ..onLongPressStart = widget.onLongPressStart
-              ..onLongPressEnd = widget.onLongPressEnd
-              ..onLongPressMoveUpdate = widget.onLongPressMoveUpdate;
-          },
-        ),
-        TapGestureRecognizer:
-            GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
-          () => TapGestureRecognizer(),
-          (recognizer) {
-            // use tap up instead of tap down to avoid this gesture detector
-            //  being responded before the pan gesture detector.
-            recognizer.onTapUp = _tapDownDelegate;
-            recognizer.onSecondaryTapUp = widget.onSecondaryTapUp;
-          },
-        ),
-      },
-      child: widget.child,
+          LongPressGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+            () => LongPressGestureRecognizer(),
+            (recognizer) {
+              recognizer
+                ..onLongPressStart = widget.onLongPressStart
+                ..onLongPressEnd = widget.onLongPressEnd
+                ..onLongPressMoveUpdate = widget.onLongPressMoveUpdate;
+            },
+          ),
+          TapGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+            () => TapGestureRecognizer(),
+            (recognizer) {
+              // use tap up instead of tap down to avoid this gesture detector
+              //  being responded before the pan gesture detector.
+              recognizer.onTapUp = _tapDownDelegate;
+              recognizer.onSecondaryTapUp = widget.onSecondaryTapUp;
+            },
+          ),
+        },
+        child: widget.child,
+      ),
     );
   }
 
@@ -115,7 +127,10 @@ class MobileSelectionGestureDetectorState
       }
       _tripleTapCount++;
     } else {
-      if (widget.onTapUp != null) {
+      final defer = widget.deferSingleTap?.call() == true;
+      if (defer) {
+        _pendingSingleTap = tapDownDetails;
+      } else if (widget.onTapUp != null) {
         widget.onTapUp!(tapDownDetails);
       }
 
@@ -124,6 +139,9 @@ class MobileSelectionGestureDetectorState
       _doubleTapTimer = Timer(kDoubleTapTimeout, () {
         _isDoubleTap = false;
         _doubleTapTimer = null;
+        final pending = _pendingSingleTap;
+        _pendingSingleTap = null;
+        if (pending != null) widget.onTapUp?.call(pending);
       });
 
       _tripleTapCount = 1;

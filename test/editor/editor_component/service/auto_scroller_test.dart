@@ -36,6 +36,43 @@ void main() {
           tester.state<ScrollableState>(find.byType(Scrollable).first);
     }
 
+    testWidgets(
+        'live bottom overlay insets reserve space without moving the top edge',
+        (tester) async {
+      await buildScrollable(tester);
+      final box = scrollableState.context.findRenderObject()! as RenderBox;
+      final viewport = box.localToGlobal(Offset.zero) & box.size;
+      final scroller = AutoScroller(
+        scrollableState,
+        viewportInsets: () => EdgeInsets.zero,
+      );
+      addTearDown(scroller.stopAutoScroll);
+      final nearBottom = Offset(viewport.center.dx, viewport.bottom - 40);
+      scroller.startAutoScroll(
+        nearBottom,
+        edgeOffset: 20,
+        duration: Duration.zero,
+      );
+      await tester.pumpAndSettle();
+      expect(scrollableState.position.pixels, 0);
+      scroller.viewportInsets = () => const EdgeInsets.only(bottom: 80);
+      scroller.startAutoScroll(
+        nearBottom,
+        edgeOffset: 20,
+        duration: Duration.zero,
+      );
+      await tester.pumpAndSettle();
+      expect(scrollableState.position.pixels, greaterThan(40));
+      scrollableState.position.jumpTo(200);
+      scroller.startAutoScroll(
+        Offset(viewport.center.dx, viewport.top + 40),
+        edgeOffset: 20,
+        duration: Duration.zero,
+      );
+      await tester.pumpAndSettle();
+      expect(scrollableState.position.pixels, 200);
+    });
+
     // Regression test for:
     // When dragging the left selection handle upward on iOS/Android, the screen
     // was scrolling DOWN (showing content below) instead of UP (showing content

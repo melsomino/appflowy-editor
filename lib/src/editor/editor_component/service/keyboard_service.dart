@@ -18,6 +18,16 @@ import 'package:flutter/services.dart';
 /// ```
 ///
 abstract class AppFlowyKeyboardService {
+  /// Whether this editor currently owns an active text input connection.
+  bool get isEditing;
+
+  /// Supply the input connection required by an iOS system menu without
+  /// showing the keyboard or changing a viewing selection into editing.
+  void beginSelectionMenuSession();
+
+  /// Release a menu-only connection; an editing connection stays attached.
+  void endSelectionMenuSession();
+
   /// Enables IME shortcuts service.
   void enable();
 
@@ -48,6 +58,14 @@ abstract class AppFlowyKeyboardService {
   ///
   /// Used in mobile
   void enableKeyBoard(Selection selection);
+
+  /// Attach an empty IME buffer for a caret at either edge of an atomic block.
+  /// Register an interceptor to translate input into adjacent text paragraphs.
+  void enableKeyboardForAtomicBlock() {
+    throw UnsupportedError(
+      'Atomic block input is not supported by this service',
+    );
+  }
 
   /// Register interceptor
   void registerInterceptor(AppFlowyKeyboardServiceInterceptor interceptor);

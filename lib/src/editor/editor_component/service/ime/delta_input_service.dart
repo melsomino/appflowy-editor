@@ -54,8 +54,9 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
   @override
   void attach(
     TextEditingValue textEditingValue,
-    TextInputConfiguration configuration,
-  ) {
+    TextInputConfiguration configuration, {
+    bool showKeyboard = true,
+  }) {
     if (_textInputConnection == null ||
         _textInputConnection!.attached == false) {
       _textInputConnection = TextInput.attach(
@@ -65,9 +66,8 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
     }
 
     final formattedValue = textEditingValue.format();
-    _textInputConnection!
-      ..setEditingState(formattedValue)
-      ..show();
+    _textInputConnection!.setEditingState(formattedValue);
+    if (showKeyboard) _textInputConnection!.show();
     currentTextEditingValue = formattedValue;
 
     AppFlowyEditorLog.input.debug(
@@ -137,6 +137,7 @@ class DeltaTextInputService extends TextInputService with DeltaTextInputClient {
     TextInputControl? newControl,
   ) {}
 
+  @override
   bool onFocusReceived() => false;
 
   @override

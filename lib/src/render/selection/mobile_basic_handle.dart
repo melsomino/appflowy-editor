@@ -1,10 +1,10 @@
 import 'dart:math';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
-import 'package:appflowy_editor/src/editor/editor_component/service/selection/mobile_selection_service.dart';
 import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -215,9 +215,10 @@ class _SelectionDragHandleState extends State<_SelectionDragHandle> {
       );
     }
 
-    final visualEdgeOffset =
-        PlatformExtension.isIOS ? -widget.handleWidth : 0.0;
-    final ballWidth = widget.handleBallWidth;
+    const visualEdgeOffset = 0.0;
+    final ballWidth = PlatformExtension.isIOS
+        ? cupertinoTextSelectionControls.getHandleSize(0).width / 2
+        : widget.handleBallWidth;
     double dyOffset = 0.0;
     if (PlatformExtension.isIOS) {
       if (widget.handleType == HandleType.left) {
@@ -526,37 +527,20 @@ class _IOSDragHandleVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (handleType == HandleType.left)
-          Container(
-            width: handleBallWidth,
-            height: handleBallWidth,
-            decoration: BoxDecoration(
-              color: handleColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-        if (handleType == HandleType.right)
-          SizedBox(width: handleBallWidth, height: handleBallWidth),
-        Container(
-          width: handleWidth,
-          color: handleColor,
-          height: handleHeight - 2.0 * handleBallWidth,
+    final lineHeight =
+        handleHeight - cupertinoTextSelectionControls.getHandleSize(0).height;
+    return CupertinoTheme(
+      data: CupertinoTheme.of(context)
+          .copyWith(selectionHandleColor: handleColor),
+      child: Builder(
+        builder: (context) => cupertinoTextSelectionControls.buildHandle(
+          context,
+          handleType == HandleType.left
+              ? TextSelectionHandleType.left
+              : TextSelectionHandleType.right,
+          lineHeight,
         ),
-        if (handleType == HandleType.right)
-          Container(
-            width: handleBallWidth,
-            height: handleBallWidth,
-            decoration: BoxDecoration(
-              color: handleColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-        if (handleType == HandleType.left)
-          SizedBox(width: handleBallWidth, height: handleBallWidth),
-      ],
+      ),
     );
   }
 }

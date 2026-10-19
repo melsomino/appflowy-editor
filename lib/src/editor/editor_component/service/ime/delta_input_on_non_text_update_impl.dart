@@ -16,7 +16,8 @@ Future<void> onNonTextUpdate(
   // with the selection range.
   final selection = editorState.selection;
 
-  if (await _checkIfBacktickPressed(editorState, nonTextUpdate)) {
+  if (characterShortcutEvents.contains(formatBackquoteToCode) &&
+      await _checkIfBacktickPressed(editorState, nonTextUpdate)) {
     return;
   }
 

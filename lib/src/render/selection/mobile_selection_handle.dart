@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:appflowy_editor/src/render/selection/mobile_basic_handle.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 // Apple HIG / Material minimum recommended touch target. Used to grow the
 // handle's hit area without changing the visible ball position, so users can
@@ -34,28 +35,42 @@ class MobileSelectionHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     assert(handleType != HandleType.collapsed);
 
-    var visualRect = rect;
+    // Selection rectangles span the whole selected line. A handle's hit target
+    // must stay at its edge, otherwise it intercepts taps across the selection.
+    final edgeRect =
+        handleType == HandleType.left || handleType == HandleType.right
+            ? Rect.fromLTWH(
+                handleType == HandleType.left ? rect.left : rect.right,
+                rect.top,
+                0,
+                rect.height,
+              )
+            : rect;
+    var visualRect = edgeRect;
     if (handleType != HandleType.none) {
       if (PlatformExtension.isIOS) {
-        // on iOS, the cursor will still be visible if the selection is not collapsed.
-        // So, adding a threshold padding to avoid row overflow.
-        const threshold = 0.25;
+        final type = handleType == HandleType.left
+            ? TextSelectionHandleType.left
+            : TextSelectionHandleType.right;
+        final size = cupertinoTextSelectionControls.getHandleSize(rect.height);
+        final anchor =
+            cupertinoTextSelectionControls.getHandleAnchor(type, rect.height);
         visualRect = Rect.fromLTWH(
-          rect.left - 2 * (handleWidth + threshold),
-          rect.top - handleBallWidth,
-          rect.width + 4 * (handleWidth + threshold),
-          rect.height + 2 * handleBallWidth,
+          edgeRect.left - anchor.dx,
+          edgeRect.bottom - anchor.dy,
+          size.width,
+          size.height,
         );
       } else if (PlatformExtension.isAndroid) {
         // on Android, normally the cursor will be hidden if the selection is not collapsed.
         // Extend the click area to make it easier to click.
         visualRect = Rect.fromLTWH(
-          rect.left - 2 * handleBallWidth,
-          rect.top,
-          rect.width + 4 * handleBallWidth,
+          edgeRect.left - 2 * handleBallWidth,
+          edgeRect.top,
+          edgeRect.width + 4 * handleBallWidth,
           // Enable clicking in the handle area outside the stack.
           // https://github.com/flutter/flutter/issues/75747
-          rect.height + 2 * handleBallWidth,
+          edgeRect.height + 2 * handleBallWidth,
         );
       }
     }

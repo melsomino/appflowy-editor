@@ -55,6 +55,12 @@ CommandShortcutEventHandler _pasteCommandHandler = (editorState) {
 
   () async {
     final data = await AppFlowyClipboard.getData();
+    if (await editorState.onPaste?.call(data, selection) == true) return;
+    if (data.nodes case final nodes?) {
+      if (editorState.selection == null) return;
+      await editorState.apply(atomicBlockPasteTransaction(editorState, nodes));
+      return;
+    }
     final text = data.text;
     final html = data.html;
     if (html != null && html.isNotEmpty) {

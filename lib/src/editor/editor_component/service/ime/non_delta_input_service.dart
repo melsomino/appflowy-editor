@@ -68,8 +68,9 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
   @override
   void attach(
     TextEditingValue textEditingValue,
-    TextInputConfiguration configuration,
-  ) {
+    TextInputConfiguration configuration, {
+    bool showKeyboard = true,
+  }) {
     final formattedValue = textEditingValue.format();
 
     // On Windows, the IME (e.g. Korean / other CJK) owns the editing state
@@ -101,9 +102,8 @@ class NonDeltaTextInputService extends TextInputService with TextInputClient {
 
     Debounce.cancel(debounceKey);
 
-    _textInputConnection!
-      ..setEditingState(formattedValue)
-      ..show();
+    _textInputConnection!.setEditingState(formattedValue);
+    if (showKeyboard) _textInputConnection!.show();
 
     currentTextEditingValue = formattedValue;
 

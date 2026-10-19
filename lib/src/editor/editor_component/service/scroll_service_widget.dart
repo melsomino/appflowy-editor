@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/editor_component/service/scroll/desktop_scroll_service.dart';
 import 'package:appflowy_editor/src/editor/editor_component/service/scroll/mobile_scroll_service.dart';
@@ -34,6 +36,7 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
   late ScrollController scrollController = ScrollController();
 
   Selection? lastSelection;
+  Timer? _keyboardScrollTimer;
 
   @override
   void initState() {
@@ -43,6 +46,7 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
 
   @override
   void dispose() {
+    _keyboardScrollTimer?.cancel();
     scrollController.dispose();
     editorState.selectionNotifier.removeListener(_onSelectionChanged);
     super.dispose();
@@ -96,6 +100,7 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final selectionRects = editorState.selectionRects();
       if (selectionRects.isEmpty) {
         return;
@@ -168,11 +173,14 @@ class _ScrollServiceWidgetState extends State<ScrollServiceWidget>
 
         // soft keyboard
         // workaround: wait for the soft keyboard to show up
-        final keyboardDelay = KeyboardHeightObserver.currentKeyboardHeight == 0
+        final keyboardDelay = !isDragOperation &&
+                editorState.service.keyboardService?.isEditing == true &&
+                KeyboardHeightObserver.currentKeyboardHeight == 0
             ? const Duration(milliseconds: 250)
             : Duration.zero;
 
-        Future.delayed(keyboardDelay, () {
+        _keyboardScrollTimer?.cancel();
+        _keyboardScrollTimer = Timer(keyboardDelay, () {
           if (_forwardKey.currentContext == null) {
             return;
           }

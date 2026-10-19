@@ -2,26 +2,30 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:universal_html/html.dart' show window;
-import 'package:universal_platform/universal_platform.dart';
 
 extension PlatformExtension on Platform {
   static String get _webPlatform =>
       window.navigator.platform?.toLowerCase() ?? '';
 
   /// Returns true if the operating system is macOS and not running on Web platform.
-  static bool get isMacOS => UniversalPlatform.isMacOS;
+  static bool get isMacOS =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
   /// Returns true if the operating system is Windows and not running on Web platform.
-  static bool get isWindows => UniversalPlatform.isWindows;
+  static bool get isWindows =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
   /// Returns true if the operating system is Linux and not running on Web platform.
-  static bool get isLinux => UniversalPlatform.isLinux;
+  static bool get isLinux =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
 
   /// Returns true if the operating system is iOS and not running on Web platform.
-  static bool get isIOS => UniversalPlatform.isIOS;
+  static bool get isIOS =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   /// Returns true if the operating system is Android and not running on Web platform.
-  static bool get isAndroid => UniversalPlatform.isAndroid;
+  static bool get isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   /// Returns true if the operating system is macOS and running on Web platform.
   static bool get isWebOnMacOS {
@@ -50,12 +54,11 @@ extension PlatformExtension on Platform {
     return _webPlatform.contains('linux') == true;
   }
 
-  static bool get isDesktopOrWeb =>
-      UniversalPlatform.isWeb || UniversalPlatform.isDesktop;
+  static bool get isDesktopOrWeb => kIsWeb || isDesktop;
 
-  static bool get isDesktop => UniversalPlatform.isDesktop;
+  static bool get isDesktop => isMacOS || isWindows || isLinux;
 
-  static bool get isMobile => UniversalPlatform.isMobile;
+  static bool get isMobile => isIOS || isAndroid;
 
   static bool get isNotMobile => !isMobile;
 }

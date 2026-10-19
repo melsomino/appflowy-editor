@@ -38,8 +38,9 @@ abstract class TextInputService {
   /// [BuildContext] is used to get current keyboard appearance(light or dark)
   void attach(
     TextEditingValue textEditingValue,
-    TextInputConfiguration configuration,
-  );
+    TextInputConfiguration configuration, {
+    bool showKeyboard = true,
+  });
 
   /// Applies insertion, deletion and replacement
   ///   to the text currently being edited.

@@ -17,6 +17,7 @@ class AutoScroller extends EdgeDraggingAutoScroller
   AutoScroller(
     super.scrollable, {
     super.onScrollViewScrolled,
+    super.viewportInsets,
     super.velocityScalar = _kDefaultAutoScrollVelocityScalar,
     super.minimumAutoScrollDelta = _kDefaultMinAutoScrollDelta,
     super.maxAutoScrollDelta = _kDefaultMaxAutoScrollDelta,

@@ -77,7 +77,16 @@ class _MobileFloatingToolbarState extends State<MobileFloatingToolbar>
     super.didUpdateWidget(oldWidget);
 
     if (widget.editorState != oldWidget.editorState) {
+      oldWidget.editorState.selectionNotifier
+          .removeListener(_onSelectionChanged);
       editorState.selectionNotifier.addListener(_onSelectionChanged);
+      _clear();
+    }
+    if (widget.editorScrollController != oldWidget.editorScrollController) {
+      oldWidget.editorScrollController.offsetNotifier
+          .removeListener(_onScrollPositionChanged);
+      widget.editorScrollController.offsetNotifier
+          .addListener(_onScrollPositionChanged);
     }
   }
 
@@ -125,14 +134,14 @@ class _MobileFloatingToolbarState extends State<MobileFloatingToolbar>
     if (selection == null || selectionType == SelectionType.block) {
       _clear();
     } else if (selection.isCollapsed) {
-      if (_isToolbarVisible) {
-        _clear();
-      } else if (prevSelection == selection &&
+      if ((prevSelection == selection || _isToolbarVisible) &&
           editorState.selectionUpdateReason == SelectionUpdateReason.uiEvent &&
           editorState.selectionExtraInfo?[
-                  selectionExtraInfoDisableFloatingToolbar] !=
-              true) {
+                  selectionExtraInfoDisableFloatingToolbar] ==
+              false) {
         _showAfterDelay();
+      } else {
+        _clear();
       }
       prevSelection = selection;
     } else {

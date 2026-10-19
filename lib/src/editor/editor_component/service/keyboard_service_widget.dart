@@ -38,6 +38,49 @@ class KeyboardServiceWidgetState extends State<KeyboardServiceWidget>
   late final FocusNode focusNode;
 
   final List<AppFlowyKeyboardServiceInterceptor> interceptors = [];
+  bool _selectionMenuConnection = false;
+
+  @override
+  bool get isEditing =>
+      !_selectionMenuConnection &&
+      focusNode.hasFocus &&
+      textInputService.attached;
+
+  @override
+  void beginSelectionMenuSession() {
+    if (isEditing || _selectionMenuConnection) return;
+    textInputService.close();
+    _selectionMenuConnection = true;
+    // TextInput.show activates the first responder required by iOS menus;
+    // TextInputType.none prevents the onscreen keyboard from appearing.
+    textInputService.attach(
+      const TextEditingValue(selection: TextSelection.collapsed(offset: 0)),
+      TextInputConfiguration(
+        viewId: View.of(context).viewId,
+        inputType: TextInputType.none,
+        keyboardAppearance: Theme.of(context).brightness,
+      ),
+    );
+    final box = editorState.renderBox;
+    final rects = editorState.selectionRects();
+    if (box != null && rects.isNotEmpty) {
+      textInputService.updateCaretPosition(
+        box.size,
+        box.getTransformTo(null),
+        Rect.fromPoints(
+          box.globalToLocal(rects.first.topLeft),
+          box.globalToLocal(rects.first.bottomRight),
+        ),
+      );
+    }
+  }
+
+  @override
+  void endSelectionMenuSession() {
+    if (!_selectionMenuConnection) return;
+    _selectionMenuConnection = false;
+    textInputService.close();
+  }
 
   // previous selection
   Selection? previousSelection;
@@ -116,6 +159,7 @@ class KeyboardServiceWidgetState extends State<KeyboardServiceWidget>
   // Used in mobile only
   @override
   void closeKeyboard() {
+    _selectionMenuConnection = false;
     textInputService.close();
   }
 
@@ -123,6 +167,24 @@ class KeyboardServiceWidgetState extends State<KeyboardServiceWidget>
   @override
   void enableKeyBoard(Selection selection) {
     _attachTextInputService(selection);
+  }
+
+  @override
+  void enableKeyboardForAtomicBlock() {
+    if (!mounted) return;
+    endSelectionMenuSession();
+    textInputService.attach(
+      const TextEditingValue(selection: TextSelection.collapsed(offset: 0)),
+      TextInputConfiguration(
+        viewId: View.of(context).viewId,
+        inputType: TextInputType.multiline,
+        inputAction: TextInputAction.newline,
+        textCapitalization: TextCapitalization.sentences,
+        keyboardAppearance: Theme.of(context).brightness,
+        allowedMimeTypes:
+            widget.contentInsertionConfiguration?.allowedMimeTypes ?? [],
+      ),
+    );
   }
 
   @override
@@ -240,6 +302,7 @@ class KeyboardServiceWidgetState extends State<KeyboardServiceWidget>
       'keyboard service - attach text input service: $textEditingValue',
     );
     if (textEditingValue != null) {
+      endSelectionMenuSession();
       textInputService.attach(
         textEditingValue,
         TextInputConfiguration(

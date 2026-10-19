@@ -66,6 +66,10 @@ topics:
   - appflowy
 
 flutter:
+  plugin:
+    platforms:
+      ios:
+        pluginClass: AppFlowyEditorPlugin
   assets:
     - "assets/images/toolbar/"
     - "assets/images/selection_menu/"

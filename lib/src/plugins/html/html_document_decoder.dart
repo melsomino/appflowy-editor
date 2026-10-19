@@ -36,7 +36,8 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     /// all-encompassing tag under the body. However,
     /// this method needs to be removed in the future as it is not stable
     final parseForSingleChild = body.children.length == 1 &&
-        HTMLTags.formattingElements.contains(body.children.first.localName);
+        HTMLTags.formattingElements.contains(body.children.first.localName) &&
+        body.children.first.querySelector('img') == null;
 
     return Document.blank()
       ..insert(
@@ -51,12 +52,20 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
     Iterable<dom.Node> domNodes, {
     String? type,
   }) {
-    final delta = Delta();
+    var delta = Delta();
     final List<Node> nodes = [];
     for (final domNode in domNodes) {
       if (domNode is dom.Element) {
         final localName = domNode.localName;
         if (HTMLTags.formattingElements.contains(localName)) {
+          if (domNode.querySelector('img') != null) {
+            if (delta.isNotEmpty) {
+              nodes.add(paragraphNode(delta: delta));
+              delta = Delta();
+            }
+            nodes.addAll(_parseParagraphElement(domNode));
+            continue;
+          }
           final style = domNode.attributes['style'];
 
           ///This is used for temporarily handling documents copied from Google Docs,
@@ -418,17 +427,54 @@ class DocumentHTMLDecoder extends Converter<String, Document> {
   }
 
   Iterable<Node> _parseParagraphElement(dom.Element element) {
+    if (element.querySelector('img') != null) {
+      return [
+        for (final part in _splitImages(element))
+          if (part.localName == HTMLTags.image)
+            _parseImageElement(part)
+          else if (HTMLTags.formattingElements.contains(part.localName))
+            ..._parseParagraphElement(dom.Element.tag('p')..nodes.add(part))
+          else
+            ..._parseParagraphElement(part),
+      ];
+    }
     final (delta, specialNodes) = _parseDeltaElement(element);
 
     return [paragraphNode(delta: delta), ...specialNodes];
   }
 
+  /// Keep text before and after an inline image in their original positions.
+  /// Clone formatting ancestors so splitting does not discard inline styles.
+  Iterable<dom.Element> _splitImages(dom.Element element) sync* {
+    var fragment = element.clone(false);
+    for (final child in element.nodes) {
+      final Iterable<dom.Node> parts = child is dom.Element
+          ? child.localName == HTMLTags.image
+              ? [child.clone(true)]
+              : _splitImages(child)
+          : [child.clone(true)];
+      for (final part in parts) {
+        if (part is dom.Element && part.localName == HTMLTags.image) {
+          if (fragment.nodes.isNotEmpty) yield fragment;
+          yield part;
+          fragment = element.clone(false);
+        } else {
+          fragment.nodes.add(part);
+        }
+      }
+    }
+    if (fragment.nodes.isNotEmpty) yield fragment;
+  }
+
   Node _parseImageElement(dom.Element element) {
-    final src = element.attributes['src'];
-    if (src == null || src.isEmpty || !src.startsWith('http')) {
+    final source = element.attributes['src'];
+    // Web pages such as Wikipedia commonly omit the scheme in image URLs.
+    final src = source?.startsWith('//') == true ? 'https:$source' : source;
+    if (src == null ||
+        src.isEmpty ||
+        !(src.startsWith('http') || src.startsWith('data:image/'))) {
       return paragraphNode(); // return empty paragraph
     }
-    // only support network image
     return imageNode(
       url: src,
     );

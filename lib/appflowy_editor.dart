@@ -1,6 +1,23 @@
 /// AppFlowyEditor library
 library;
 
+export 'src/editor/editor_component/service/selection/mobile_selection_service.dart'
+    show MobileSelectionDragMode, selectionDragModeKey;
+
+export 'src/editor/toolbar/mobile/mobile_text_selection_toolbar.dart';
+
+export 'src/editor/editor_component/service/selection/mobile_text_interaction.dart';
+
+export 'src/editor/atomic_block/atomic_block_navigation.dart';
+export 'src/editor/atomic_block/atomic_block_enter.dart';
+export 'src/editor/atomic_block/atomic_block_backspace.dart';
+export 'src/editor/atomic_block/atomic_block_keyboard_input.dart';
+export 'src/editor/atomic_block/atomic_block_component.dart';
+export 'src/editor/atomic_block/atomic_block_insert.dart';
+export 'src/editor/drag/block_drop_target.dart';
+export 'src/editor/drag/block_drag_bounds.dart';
+export 'src/editor/drag/block_gap_animation.dart';
+
 // core part, including document, node, selection, etc.
 export 'src/core/core.dart';
 export 'src/editor/block_component/rich_text/appflowy_rich_text.dart';

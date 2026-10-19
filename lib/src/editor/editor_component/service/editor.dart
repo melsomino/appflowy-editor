@@ -45,6 +45,7 @@ class AppFlowyEditor extends StatefulWidget {
     this.disableScrollService = false,
     this.disableAutoScroll = false,
     this.autoScrollEdgeOffset = appFlowyEditorAutoScrollEdgeOffset,
+    this.autoScrollInsets,
     this.documentRules = const [],
     this.blockWrapper,
   })  : blockComponentBuilders =
@@ -222,6 +223,10 @@ class AppFlowyEditor extends StatefulWidget {
   ///
   final double autoScrollEdgeOffset;
 
+  /// Areas of the viewport covered by floating UI, measured before scrolling.
+  /// This changes scroll visibility targets without padding or clipping content.
+  final ValueGetter<EdgeInsets>? autoScrollInsets;
+
   /// The rules to apply to the document.
   ///
   final List<DocumentRule> documentRules;
@@ -379,6 +384,7 @@ class _AppFlowyEditorState extends State<AppFlowyEditor> {
     editorState.autoCompleteTextProvider = widget.autoCompleteTextProvider;
     editorState.disableAutoScroll = widget.disableAutoScroll;
     editorState.autoScrollEdgeOffset = widget.autoScrollEdgeOffset;
+    editorState.autoScrollInsets = widget.autoScrollInsets;
     editorState.documentRules = widget.documentRules;
   }
 

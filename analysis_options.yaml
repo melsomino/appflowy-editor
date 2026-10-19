@@ -30,6 +30,8 @@ linter:
 analyzer:
   exclude:
     - lib/src/l10n/**
+    - build/**
+    - ios/**
   plugins:
     - custom_lint
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/widgets.dart';
 
@@ -146,13 +148,14 @@ Selection _computeSelectionAfterPasteMultipleNodes(
   );
 }
 
-void handleCopy(EditorState editorState) async {
+Future<void> handleCopy(EditorState editorState) async {
   final selection = editorState.selection?.normalized;
   if (selection == null) {
     return;
   }
   String text;
   String html;
+  List<Node> copiedNodes;
 
   if (selection.isCollapsed) {
     final node = editorState.getNodeAtPath(selection.end.path);
@@ -160,6 +163,7 @@ void handleCopy(EditorState editorState) async {
       return;
     }
     text = node.delta?.toPlainText() ?? '';
+    copiedNodes = [node.copyWith()];
     html = documentToHTML(
       Document(
         root: pageNode(children: [node.copyWith()]),
@@ -168,9 +172,20 @@ void handleCopy(EditorState editorState) async {
   } else {
     text = editorState.getTextInSelection(selection).join('\n');
     final nodes = editorState.getSelectedNodes(selection: selection);
+    if (nodes.isNotEmpty &&
+        selection.start.offset == 1 &&
+        editorState.getNodeAtPath(selection.start.path)?.delta == null) {
+      nodes.removeAt(0);
+    }
+    if (nodes.isNotEmpty &&
+        selection.end.offset == 0 &&
+        editorState.getNodeAtPath(selection.end.path)?.delta == null) {
+      nodes.removeLast();
+    }
     if (nodes.isEmpty) {
       return;
     }
+    copiedNodes = nodes;
     html = documentToHTML(
       Document(
         root: pageNode(
@@ -183,6 +198,7 @@ void handleCopy(EditorState editorState) async {
   return AppFlowyClipboard.setData(
     text: text,
     html: html.isEmpty ? null : html,
+    nodes: copiedNodes.any((node) => node.delta == null) ? copiedNodes : null,
   );
 }
 
@@ -299,17 +315,40 @@ void _pasteMultipleLinesInText(
   editorState.apply(transaction);
 }
 
-void handlePaste(EditorState editorState) async {
-  final data = await AppFlowyClipboard.getData();
+Future<void> handlePaste(
+  EditorState editorState, {
+  AppFlowyClipboardData? data,
+}) async {
+  final selection = editorState.selection;
+  if (selection == null) return;
+  final clipboard = data ?? await AppFlowyClipboard.getData();
+  if (editorState.isDisposed) return;
+  if (await editorState.onPaste?.call(clipboard, selection) == true) return;
+  // Reading another app's clipboard can show an iOS permission prompt. Focus
+  // loss clears the editor selection while that asynchronous read is pending.
+  if (editorState.selection == null) {
+    unawaited(
+      editorState.updateSelectionWithReason(
+        selection,
+        reason: SelectionUpdateReason.uiEvent,
+      ),
+    );
+  }
+  final nodes = clipboard.nodes;
+  if (nodes != null) {
+    if (editorState.selection == null) return;
+    await editorState.apply(atomicBlockPasteTransaction(editorState, nodes));
+    return;
+  }
 
   if (editorState.selection?.isCollapsed ?? false) {
-    return _pasteRichClipboard(editorState, data);
+    return _pasteRichClipboard(editorState, clipboard);
   }
 
   await deleteSelectedContent(editorState);
 
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    _pasteRichClipboard(editorState, data);
+    _pasteRichClipboard(editorState, clipboard);
   });
 }
 

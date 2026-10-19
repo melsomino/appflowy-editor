@@ -149,6 +149,7 @@ class EdgeDraggingAutoScroller {
   EdgeDraggingAutoScroller(
     this.scrollable, {
     this.onScrollViewScrolled,
+    this.viewportInsets,
     required this.velocityScalar,
     double minimumAutoScrollDelta = 1.0,
     double maxAutoScrollDelta = 20.0,
@@ -162,6 +163,9 @@ class EdgeDraggingAutoScroller {
 
   /// The [Scrollable] this auto scroller is scrolling.
   final ScrollableState scrollable;
+
+  /// Live areas covered by floating controls inside the scroll viewport.
+  ValueGetter<EdgeInsets>? viewportInsets;
 
   /// Called when a scroll view is scrolled.
   ///
@@ -245,7 +249,7 @@ class EdgeDraggingAutoScroller {
       final RenderBox scrollRenderBox =
           scrollable.context.findRenderObject()! as RenderBox;
       final Matrix4 transform = scrollRenderBox.getTransformTo(null);
-      final Rect globalRect = MatrixUtils.transformRect(
+      final Rect fullViewport = MatrixUtils.transformRect(
         transform,
         Rect.fromLTWH(
           0,
@@ -254,6 +258,12 @@ class EdgeDraggingAutoScroller {
           scrollRenderBox.size.height,
         ),
       );
+      final globalRect =
+          (viewportInsets?.call() ?? EdgeInsets.zero).deflateRect(fullViewport);
+      if (globalRect.isEmpty) {
+        stopAutoScroll();
+        return;
+      }
       final Rect transformedDragTarget = MatrixUtils.transformRect(
         transform,
         _dragTargetRelatedToScrollOrigin,
