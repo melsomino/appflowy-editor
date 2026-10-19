@@ -88,7 +88,6 @@ class _AtomicBlockComponentState extends State<_AtomicBlockComponent>
             width: constraints.maxWidth,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onDoubleTap: widget.editorState.editable ? _selectBlock : null,
               onTapUp: widget.editorState.editable
                   ? (details) {
                       final x = details.localPosition.dx;
@@ -128,16 +127,6 @@ class _AtomicBlockComponentState extends State<_AtomicBlockComponent>
           ),
         ),
       );
-
-  void _selectBlock() {
-    final viewing =
-        widget.editorState.service.keyboardService?.isEditing != true;
-    widget.editorState.updateSelectionWithReason(
-      Selection.single(path: node.path, startOffset: 0, endOffset: 1),
-      reason: SelectionUpdateReason.uiEvent,
-      extraInfo: {selectionExtraInfoDoNotAttachTextService: viewing},
-    );
-  }
 
   void _placeCursor(bool before) {
     final selection = Selection.collapsed(before ? start() : end());

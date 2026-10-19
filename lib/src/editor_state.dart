@@ -89,6 +89,7 @@ enum SelectionUpdateReason {
   remote, // like remote selection
   selectAll,
   searchHighlight, // Highlighting search results
+  focus, // Programmatic focus or caret restoration, rather than a text tap.
 }
 
 enum SelectionType {
