@@ -181,12 +181,9 @@ class _MobileSelectionServiceWidgetState
         if (offset == null || disableMagnifier || _longPressSelectingWords) {
           return const SizedBox.shrink();
         }
-        final renderBox = context.findRenderObject() as RenderBox;
-        final local = renderBox.globalToLocal(offset);
-
         return MobileMagnifier(
           size: widget.magnifierSize,
-          offset: local,
+          offset: offset,
         );
       },
     );

@@ -1,6 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
-class MobileMagnifier extends StatelessWidget {
+import 'package:flutter/material.dart';
+import 'mobile_magnifier_layout.dart';
+
+class MobileMagnifier extends StatefulWidget {
   const MobileMagnifier({
     super.key,
     required this.size,
@@ -8,23 +11,47 @@ class MobileMagnifier extends StatelessWidget {
   });
 
   final Size size;
+
+  /// Focal point in global coordinates, independent of the editor's clipping.
   final Offset offset;
 
   @override
-  Widget build(BuildContext context) {
-    // the magnifier will blink if the center is the same as the offset.
-    final magicOffset = Offset(0, size.height - 22);
+  State<MobileMagnifier> createState() => _MobileMagnifierState();
+}
 
-    return Positioned.fromRect(
-      rect: Rect.fromCenter(
-        center: offset - magicOffset,
-        width: size.width,
-        height: size.height,
+class _MobileMagnifierState extends State<MobileMagnifier> {
+  final _portal = OverlayPortalController()..show();
+
+  @override
+  Widget build(BuildContext context) => OverlayPortal(
+        controller: _portal,
+        overlayLocation: OverlayChildLocation.rootOverlay,
+        overlayChildBuilder: _buildLens,
+        child: const SizedBox.shrink(),
+      );
+
+  Widget _buildLens(BuildContext context) {
+    final overlay = Overlay.of(context, rootOverlay: true);
+    final box = overlay.context.findRenderObject()! as RenderBox;
+    final media = MediaQuery.of(overlay.context);
+    final padding = media.viewPadding;
+    final focalPoint = box.globalToLocal(widget.offset);
+    final rect = mobileMagnifierRect(
+      size: widget.size,
+      focalPoint: focalPoint,
+      bounds: Rect.fromLTRB(
+        padding.left + 8,
+        padding.top + 8,
+        box.size.width - padding.right - 8,
+        box.size.height - math.max(padding.bottom, media.viewInsets.bottom) - 8,
       ),
+    );
+    return Positioned.fromRect(
+      rect: rect,
       child: IgnorePointer(
         child: _CustomMagnifier(
-          size: size,
-          additionalFocalPointOffset: magicOffset,
+          size: widget.size,
+          additionalFocalPointOffset: focalPoint - rect.center,
         ),
       ),
     );
