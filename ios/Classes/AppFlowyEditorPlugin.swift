@@ -18,6 +18,10 @@ public final class AppFlowyEditorPlugin: NSObject, FlutterPlugin {
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    if call.method == "readClipboard" {
+      result(EditorClipboard.read())
+      return
+    }
     guard #available(iOS 16.0, *) else {
       result(FlutterError(code: "unsupported_ios", message: "Native menus require iOS 16", details: nil))
       return
@@ -107,7 +111,7 @@ private final class EditorSelectionMenu: NSObject, UIEditMenuInteractionDelegate
         guard let self = self else { return }
         var selection: [String: Any] = ["index": index]
         if isPaste {
-          selection["clipboard"] = Self.readClipboard()
+          selection["clipboard"] = EditorClipboard.read()
         }
         self.selected = selection
       }
@@ -128,7 +132,10 @@ private final class EditorSelectionMenu: NSObject, UIEditMenuInteractionDelegate
     }
   }
 
-  private static func readClipboard() -> [String: Any] {
+}
+
+private enum EditorClipboard {
+  static func read() -> [String: Any] {
     let pasteboard = UIPasteboard.general
     var data: [String: Any] = [:]
     if let text = pasteboard.string { data["text"] = text }

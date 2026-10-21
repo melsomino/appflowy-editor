@@ -66,6 +66,29 @@ class AppFlowyClipboard {
     return fromSystemData(text: data?.text);
   }
 
+  /// Read native HTML and images for an explicit user-initiated paste command.
+  /// iOS may request clipboard access when invoked outside its Paste menu.
+  static Future<AppFlowyClipboardData> getRichData() async {
+    if (_mockData != null) return _mockData!;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      return getData();
+    }
+    final data = await const MethodChannel('appflowy_editor/selection_menu')
+        .invokeMapMethod<Object?, Object?>('readClipboard');
+    if (data?['archiveError'] case final String error) {
+      throw FormatException('Could not read clipboard web archive: $error');
+    }
+    final images = data?['images'] as List<Object?>? ?? const [];
+    return fromSystemData(
+      text: data?['text'] as String?,
+      html: data?['html'] as String?,
+      images: [
+        for (final image in images)
+          AppFlowyClipboardImage.fromMap(image! as Map<Object?, Object?>),
+      ],
+    );
+  }
+
   /// Combine native formats with editor-owned blocks only while text matches.
   /// Native menu payloads are already authorized; do not read the buffer again.
   static AppFlowyClipboardData fromSystemData({

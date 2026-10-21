@@ -76,15 +76,23 @@ Future<void> _testHandleCopy(WidgetTester tester, Document document) async {
   await editor.updateSelection(Selection.collapsed(Position(path: [0])));
   await editor.pressKey(
     key: LogicalKeyboardKey.keyA,
-    isControlPressed: Platform.isWindows || Platform.isLinux,
-    isMetaPressed: Platform.isMacOS,
+    isControlPressed: true,
   );
   final text =
       editor.editorState.getTextInSelection(editor.selection).join('\n');
-  handleCopy(editor.editorState);
+  await handleCopy(editor.editorState);
   final clipBoardData = await AppFlowyClipboard.getData();
-  //this will be null because html content is not testable
-  expect(clipBoardData.html, null);
+  // The editor retains HTML alongside text for pasting within the app.
+  expect(clipBoardData.html, isNotEmpty);
+  expect(
+    htmlToDocument(clipBoardData.html!)
+        .root
+        .children
+        .map((node) => node.delta?.toPlainText() ?? '')
+        .join('\n'),
+    // HTML omits empty trailing paragraphs; plain text below retains them.
+    text.replaceFirst(RegExp(r'\n+$'), ''),
+  );
   expect(clipBoardData.text, text);
 
   await editor.dispose();
